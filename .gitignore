@@ -1,6 +1,7 @@
 # Custom
-# Used for neovim intellisense with bear
 compile_commands.json
+.cache/
+build/
 
 # Prerequisites
 *.d
