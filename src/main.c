@@ -7,6 +7,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -125,15 +126,40 @@ void handle_bang(struct history* history, char* input) {
   command(cmd);
 }
 
+void change_dir(char* new_cwd) {
+  if (chdir(new_cwd) != 0) {
+    perror("chdir failed");
+  }
+}
+
 int main(void) {
-  // ignore SIGINT so control+c doesn't terminate
+  // ignore SIGINT so control+c doesn't terminate so we can forward to child
   signal(SIGINT, SIG_IGN);
 
   struct history* history = history_create(OSH_MAX_HISTORY_LEN);
 
   while (true) {
+    // get current working dir
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, PATH_MAX) == NULL) {
+      perror("failed to get current working directory");
+      return 1;
+    }
+
+    // replace $HOME in working dir with tilde
+    const char* home = getenv("HOME");
+    if (home) {
+      size_t len = strlen(home);
+
+      if (strncmp(cwd, home, len) == 0 && (cwd[len] == '\0' || cwd[len] == '/')) {
+        memmove(cwd + 1, cwd + len, strlen(cwd + len) + 1);
+
+        cwd[0] = '~';
+      }
+    }
+
     // print prompt
-    printf(OSH_PROMPT);
+    printf("%s " OSH_PROMPT, cwd);
     fflush(stdout);
     
     // read input and input len
@@ -161,6 +187,11 @@ int main(void) {
     // handle bang
     if (input[0] == '!') {
       handle_bang(history, input);
+      continue;
+    }
+
+    if (input[0] == 'c' && input[1] == 'd' && input[2] == ' ') {
+      change_dir(&input[3]);
       continue;
     }
 
