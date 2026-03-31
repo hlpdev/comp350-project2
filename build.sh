@@ -2,5 +2,10 @@
 
 set -e
 
-mkdir build
+if [[ -f build/osh ]]; then
+  rm build/osh
+fi
+
+mkdir -p build
+
 gcc src/*.c -Iinclude -o build/osh
